@@ -736,11 +736,12 @@ export const ensureQuestionAiHints = async (questionId: number, cityName: string
   const generatedHints = await generateHintsForCity(cityName);
   const storedHint1 = storedHints ? sanitizeHintValue(storedHints.hint_1, 'food') : '';
   const storedHint2 = storedHints ? sanitizeHintValue(storedHints.hint_2, 'province') : '';
+  const storedHint3 = storedHints ? sanitizeHintValue(storedHints.hint_3, 'initial') : '';
   const rawHint = question?.ai_hint?.trim() || '';
   const mergedHints: AiHintBundle = {
     hint_1: isTasikmalaya ? 'Nasi TO' : storedHint1 || (rawHint && !rawHint.startsWith('{') ? sanitizeHintValue(rawHint, 'food') : '') || generatedHints.hint_1,
     hint_2: storedHint2 || generatedHints.hint_2,
-    hint_3: cityInitialHint
+    hint_3: storedHint3 || cityInitialHint
   };
 
   await persistQuestionAiHints(questionId, mergedHints);
