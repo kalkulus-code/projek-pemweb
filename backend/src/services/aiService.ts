@@ -726,22 +726,27 @@ export const ensureQuestionAiHints = async (questionId: number, cityName: string
     where: { id: questionId }
   });
 
-  const cityInitialHint = getCityInitialHint(cityName);
-  const isTasikmalaya = isTasikmalayaCity(cityName);
   if (!question) {
     return buildFallbackHints(cityName);
   }
 
-  const storedHints = parseStoredHints(question?.ai_hint);
+  const cityInitialHint = getCityInitialHint(cityName);
+  const isTasikmalaya = isTasikmalayaCity(cityName);
+  const storedHints = parseStoredHints(question.ai_hint);
+
+  if (storedHints?.hint_1 && storedHints.hint_2 && storedHints.hint_3) {
+    return {
+      hint_1: isTasikmalaya ? 'Nasi TO' : storedHints.hint_1,
+      hint_2: storedHints.hint_2,
+      hint_3: storedHints.hint_3
+    };
+  }
+
   const generatedHints = await generateHintsForCity(cityName);
-  const storedHint1 = storedHints ? sanitizeHintValue(storedHints.hint_1, 'food') : '';
-  const storedHint2 = storedHints ? sanitizeHintValue(storedHints.hint_2, 'province') : '';
-  const storedHint3 = storedHints ? sanitizeHintValue(storedHints.hint_3, 'initial') : '';
-  const rawHint = question?.ai_hint?.trim() || '';
   const mergedHints: AiHintBundle = {
-    hint_1: isTasikmalaya ? 'Nasi TO' : storedHint1 || (rawHint && !rawHint.startsWith('{') ? sanitizeHintValue(rawHint, 'food') : '') || generatedHints.hint_1,
-    hint_2: storedHint2 || generatedHints.hint_2,
-    hint_3: storedHint3 || cityInitialHint
+    hint_1: isTasikmalaya ? 'Nasi TO' : (storedHints?.hint_1 || generatedHints.hint_1),
+    hint_2: storedHints?.hint_2 || generatedHints.hint_2,
+    hint_3: storedHints?.hint_3 || cityInitialHint
   };
 
   await persistQuestionAiHints(questionId, mergedHints);
