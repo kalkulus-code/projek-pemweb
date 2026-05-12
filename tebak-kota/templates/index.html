@@ -294,15 +294,16 @@
 </div>
 
 <script>
+    const BACKEND_URL = 'https://projek-pemweb-production-345a.up.railway.app';
     const STORAGE_KEY = 'tebak_kota_user';
-    const SERVER_BOOT_ID = '{{ server_boot_id }}';
+    let SERVER_BOOT_ID = '';
     // State
     let currentUser = {
         nickname: '',
         avatar: '🦊',
         isHost: false,
         userId: '',
-        serverBootId: SERVER_BOOT_ID
+        serverBootId: ''
     };
 
     const normalizeAvatar = (value) => {
@@ -321,6 +322,16 @@
             currentUser.userId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `user_${Math.random().toString(36).slice(2, 10)}`;
         }
         return currentUser.userId;
+    };
+
+    const fetchServerBootId = async () => {
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/meta`);
+            const data = await res.json();
+            SERVER_BOOT_ID = String(data.server_boot_id || '');
+        } catch (error) {
+            SERVER_BOOT_ID = '';
+        }
     };
 
     const loadSavedUser = () => {
@@ -410,7 +421,8 @@
     });
 
     // Check if returning user
-    window.onload = () => {
+    window.onload = async () => {
+        await fetchServerBootId();
         const data = loadSavedUser();
         if (data) {
             document.getElementById('nickname').value = data.nickname;
@@ -451,7 +463,7 @@
         const difficulty = document.getElementById('room-difficulty').value;
         const isPrivate = document.getElementById('room-private').checked;
         try {
-            const res = await fetch('http://localhost:3000/api/rooms', {
+            const res = await fetch(`${BACKEND_URL}/api/rooms`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -489,7 +501,7 @@
         const listDiv = document.getElementById('lobby-list');
         listDiv.innerHTML = '<p class="text-center text-sm">Memuat...</p>';
         try {
-            const res = await fetch('http://localhost:3000/api/rooms');
+            const res = await fetch(`${BACKEND_URL}/api/rooms`);
             const rooms = await res.json();
             if(rooms.length === 0) {
                 listDiv.innerHTML = '<p class="text-center text-sm opacity-70">Belum ada room yang tersedia.</p>';

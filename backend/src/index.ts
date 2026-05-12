@@ -4,10 +4,12 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { Server as SocketIOServer } from 'socket.io';
 import type { Server as HTTPServer } from 'http';
+import { randomUUID } from 'crypto';
 import { registerSocketHandlers } from './sockets';
 import apiRoutes from './routes/api';
 
 const app = new Hono();
+const SERVER_BOOT_ID = randomUUID();
 
 // Middleware CORS
 app.use('*', cors({
@@ -20,6 +22,7 @@ app.use('/photos/*', serveStatic({ root: './public' }));
 
 // Setup Routes API Hono
 app.route('/api', apiRoutes);
+app.get('/api/meta', (c) => c.json({ server_boot_id: SERVER_BOOT_ID }));
 
 app.get('/', (c) => c.text('🟢 Tebak Daerah Backend API & Socket is Live!'));
 

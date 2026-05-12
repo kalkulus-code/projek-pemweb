@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Room {{ room_code }} - Guess the City</title>
+    <title>Room - Guess the City</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -322,7 +322,7 @@
         <!-- Header Info -->
         <div id="room-header" class="glass-panel p-4 flex justify-between items-center">
             <div>
-                <h1 class="text-2xl font-bold text-yellow-400">Kode Room: <span class="tracking-widest">{{ room_code }}</span></h1>
+                <h1 class="text-2xl font-bold text-yellow-400">Kode Room: <span id="room-code-label" class="tracking-widest">-</span></h1>
                 <p class="text-sm opacity-80" id="room-settings">Maks Player: - | Poin Menang: -</p>
             </div>
             <div id="room-header-actions" class="flex items-center gap-3">
@@ -407,14 +407,23 @@
 <audio id="sound-start" src="https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg"></audio>
 
 <script>
-    const BACKEND_URL = 'http://localhost:3000'; 
+    const BACKEND_URL = 'https://projek-pemweb-production-345a.up.railway.app';
     const socket = io(BACKEND_URL);
-    const roomCode = '{{ room_code }}';
+    const roomCode = window.location.pathname.split('/').filter(Boolean).pop()?.toUpperCase() || '';
     const joinSource = new URLSearchParams(window.location.search).get('source') === 'lobby' ? 'lobby' : 'code';
     const STORAGE_KEY = 'tebak_kota_user';
-    const SERVER_BOOT_ID = '{{ server_boot_id }}';
+    let SERVER_BOOT_ID = '';
     
     // Load user data
+    const fetchServerBootId = async () => {
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/meta`);
+            const data = await res.json();
+            SERVER_BOOT_ID = String(data.server_boot_id || '');
+        } catch (error) {
+            SERVER_BOOT_ID = '';
+        }
+    };
     const loadSavedUser = () => {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (!saved) return null;
@@ -431,11 +440,13 @@
             return null;
         }
     };
-    const savedUser = loadSavedUser();
-    if (!savedUser) {
-        window.location.href = '/';
-    }
-    const currentUser = savedUser || {};
+    const currentUser = {
+        nickname: '',
+        avatar: 'ðŸ¦Š',
+        isHost: false,
+        userId: '',
+        serverBootId: ''
+    };
     const normalizeAvatar = (value) => {
         const legacyAvatarMap = {
             '🦊': '🦊',
@@ -454,9 +465,6 @@
         }
         return currentUser.userId;
     };
-    currentUser.avatar = normalizeAvatar(currentUser.avatar);
-    ensureUserId();
-
     // DOM Elements
     const playerListDiv = document.getElementById('player-list');
     const playerCountSpan = document.getElementById('player-count');
@@ -852,15 +860,16 @@
     });
     mobileSheetClose.addEventListener('click', () => setMobileTab('closed'));
 
-    // Join room setelah semua handler siap, biar notif realtime tidak kelewat
-    socket.emit('join_room', {
-        roomId: roomCode,
-        playerName: currentUser.nickname,
-        avatar: currentUser.avatar,
-        isHost: currentUser.isHost,
-        userId: ensureUserId(),
-        source: joinSource
-    });
+    const joinRoom = () => {
+        socket.emit('join_room', {
+            roomId: roomCode,
+            playerName: currentUser.nickname,
+            avatar: currentUser.avatar,
+            isHost: currentUser.isHost,
+            userId: ensureUserId(),
+            source: joinSource
+        });
+    };
 
     socket.on('timer_update', (data) => {
         const timerDisp = document.getElementById('timer-display');
@@ -939,6 +948,35 @@
             }
         }
     });
+
+    const initializeRoom = async () => {
+        await fetchServerBootId();
+        if (!roomCode) {
+            window.location.href = '/';
+            return;
+        }
+        const savedUser = loadSavedUser();
+        if (!savedUser) {
+            window.location.href = '/';
+            return;
+        }
+
+        Object.assign(currentUser, savedUser);
+        currentUser.avatar = normalizeAvatar(currentUser.avatar);
+        currentUser.serverBootId = SERVER_BOOT_ID;
+        if (!currentUser.userId) {
+            ensureUserId();
+        }
+
+        const roomCodeLabel = document.getElementById('room-code-label');
+        if (roomCodeLabel) {
+            roomCodeLabel.textContent = roomCode;
+        }
+
+        joinRoom();
+    };
+
+    initializeRoom();
 </script>
 </body>
 </html>
